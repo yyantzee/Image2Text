@@ -15,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'];
 
     // Query database untuk mencari pengguna dengan username yang diberikan
-    $sql = "SELECT id, username, password FROM admin WHERE username = '$username'";
+    $sql = "SELECT id_admin, username, password FROM admin WHERE username = '$username'";
     $result = $conn->query($sql);
 
     if ($result->num_rows > 0) {
@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Sesuaikan ini dengan logika autentikasi yang sesuai, misalnya menggunakan session
             $_SESSION['loggedin'] = true;
             $_SESSION['username'] = $username;
-            $_SESSION['user_id'] = $row['id'];
+            $_SESSION['user_id'] = $row['id_admin'];
 
             // Redirect ke halaman admin dashboard setelah login sukses
             header('Location: admin_dashboard.php');
