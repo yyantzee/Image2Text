@@ -1,57 +1,6 @@
 <?php
 include 'connection.php'; // Menghubungkan ke file koneksi database
 
-session_start(); // Mulai session
-
-if (isset($_POST['login'])) {
-    $email = $_POST['email'];
-    $password = $_POST['password'];
-
-    // Query untuk mendapatkan data pengguna berdasarkan email
-    $sql = "SELECT * FROM users WHERE email = '$email'";
-    $result = $conn->query($sql);
-
-    if ($result->num_rows > 0) {
-        $user = $result->fetch_assoc();
-
-        // Memeriksa kecocokan password menggunakan password_verify
-        if (password_verify($password, $user['password'])) {
-            // Set session untuk menandai bahwa pengguna telah login
-            $_SESSION['user_id'] = $user['id_user'];
-            $_SESSION['email'] = $user['email'];
-            echo '<script>alert("Login berhasil!")</script>';
-            // Redirect atau lakukan tindakan lain setelah berhasil login
-        } else {
-            echo '<script>alert("Email atau password salah.")</script>';
-        }
-    } else {
-        echo '<script>alert("Akun tidak ditemukan.")</script>';
-    }
-}
-
-if (isset($_POST['register'])) {
-    $email = $_POST['register-email'];
-    $password = $_POST['register-password'];
-    $hashedPassword = password_hash($password, PASSWORD_DEFAULT); // Enkripsi password menggunakan bcrypt
-
-    // Query untuk menyimpan data pengguna ke dalam database
-    $sql = "INSERT INTO users (email, password, created_at) VALUES ('$email', '$hashedPassword', NOW())";
-
-    if ($conn->query($sql) === TRUE) {
-        echo '<script>alert("Registrasi berhasil! Silakan login untuk melanjutkan.")</script>';
-    } else {
-        echo '<script>alert("Gagal melakukan registrasi. Silakan coba lagi.")</script>';
-    }
-}
-
-if (isset($_POST['logout'])) {
-    session_start();
-    session_unset(); // Hapus semua variabel session
-    session_destroy(); // Hapus session
-    header('Location: index.php'); // Redirect ke halaman login setelah logout
-    exit;
-}
-
 // Check if form is submitted
 if (isset($_POST['convert'])) {
     // Check if a file is uploaded
@@ -86,26 +35,16 @@ if (isset($_POST['convert'])) {
             // Mendapatkan alamat IP pengguna
             $ip_address = $_SERVER['REMOTE_ADDR'];
 
-            if (!isset($_SESSION['user_id'])) {
-                $sql = "INSERT INTO user_response (id_user, ip_address, file_name, extracted_text, created_at) VALUES ('2','$ip_address', '$file_name', '$extracted_text', NOW())";
+            // Simpan data ke database
+            $sql = "INSERT INTO user_response (ip_address, file_name, extracted_text, created_at) VALUES ('$ip_address', '$file_name', '$extracted_text', NOW())";
 
-                if ($conn->query($sql) === TRUE) {
-                    // Generate download link for extracted text
-                    // Simpan teks yang diekstraksi ke dalam session untuk diunduh nanti
-                    $_SESSION['extracted_text'] = $extracted_text;
-                } else {
-                    echo '<p>Gagal menyimpan data: ' . $conn->error . '</p>';
-                }
+            if ($conn->query($sql) === TRUE) {
+                // Generate download link for extracted text
+                // Simpan teks yang diekstraksi ke dalam session untuk diunduh nanti
+                session_start();
+                $_SESSION['extracted_text'] = $extracted_text;
             } else {
-                $sql = "INSERT INTO user_response (id_user, ip_address, file_name, extracted_text, created_at) VALUES ('$_SESSION[user_id]','$ip_address', '$file_name', '$extracted_text', NOW())";
-
-                if ($conn->query($sql) === TRUE) {
-                    // Generate download link for extracted text
-                    // Simpan teks yang diekstraksi ke dalam session untuk diunduh nanti
-                    $_SESSION['extracted_text'] = $extracted_text;
-                } else {
-                    echo '<p>Gagal menyimpan data: ' . $conn->error . '</p>';
-                }
+                echo '<p>Gagal menyimpan data: ' . $conn->error . '</p>';
             }
         }
 
@@ -167,13 +106,6 @@ if (isset($_POST['convert'])) {
                 transform: rotate(360deg);
             }
         }
-
-        @media (max-width: 640px) {
-            .ml-4 {
-                margin-left: 0.5rem;
-                margin-top: 0.5rem;
-            }
-        }
     </style>
 </head>
 
@@ -188,15 +120,9 @@ if (isset($_POST['convert'])) {
             <h2 class="text-xl font-semibold text-blue-600">image2text.com</h2>
         </div>
         <div class="flex items-center">
-            <?php if (isset($_SESSION['user_id'])) : ?>
-                <!-- Tombol Logout -->
-                <form method="POST">
-                    <button type="submit" name="logout" class="text-white font-semibold bg-red-500 w-max px-4 py-1 rounded-lg transition duration-300 border-2 hover:bg-white hover:text-red-500 hover:border-red-500">Logout</button>
-                </form>
-            <?php else : ?>
-                <!-- Tombol Login -->
-                <a href="#" onclick="showLoginModal()" class="text-white font-semibold bg-blue-500 w-max px-4 py-1 rounded-lg transition duration-300 border-2 hover:bg-white hover:text-blue-500 hover:border-blue-500">Login</a>
-            <?php endif; ?>
+            <a href="https://saweria.co/image2text" class="text-black font-semibold hidden sm:block bg-yellow-500 w-max px-4 py-1 rounded-lg transition duration-300 border-2 hover:bg-white hover:text-yellow-600 hover:border-yellow-500">Donate
+                me in <span class="underline">Saweria</span></a>
+            <a href="https://saweria.co/image2text" class="text-black font-semibold bg-yellow-500 sm:hidden w-max px-4 py-1 rounded-lg transition duration-300 border-2 hover:bg-white hover:text-yellow-600 hover:border-yellow-500">Donate</a>
         </div>
     </nav>
 
@@ -224,11 +150,7 @@ if (isset($_POST['convert'])) {
                 <h2 class="text-lg font-semibold mb-2">Extracted Text:</h2>
                 <textarea class="w-full h-72 mb-5 border-2 cursor-text" id="extracted-text"><?php echo htmlspecialchars($extracted_text); ?></textarea>
                 <button onclick="copyToClipboard()" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 mb-5 rounded">Copy</button>
-                <?php if (isset($_SESSION['user_id'])) : ?>
-                    <button onclick="downloadText()" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 mb-5 rounded">Download Text</button>
-                <?php else : ?>
-                    <button onclick="showLoginModal()" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 mb-5 rounded">Download Text</button>
-                <?php endif; ?>
+                <button onclick="downloadText()" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 mb-5 rounded">Download Text</button>
 
             <?php else : ?>
             </div>
@@ -236,47 +158,6 @@ if (isset($_POST['convert'])) {
 
         </div>
     </section>
-
-    <!-- Login Modal -->
-    <div id="login-modal" class="hidden fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex justify-center items-center">
-        <div class="bg-white p-8 rounded-lg shadow-md w-full mx-4 sm:w-1/2 md:w-1/3 lg:w-1/4">
-            <h2 class="text-2xl font-bold mb-4">Login</h2>
-            <form id="login-form" method="post">
-                <div class="mb-4">
-                    <label for="email" class="block text-sm font-semibold mb-1">Email</label>
-                    <input type="email" id="email" name="email" class="w-full border border-gray-300 rounded-md p-2" required>
-                </div>
-                <div class="mb-4">
-                    <label for="password" class="block text-sm font-semibold mb-1">Password</label>
-                    <input type="password" id="password" name="password" class="w-full border border-gray-300 rounded-md p-2" required>
-                </div>
-                <button type="submit" name="login" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Login</button>
-                <button type="button" onclick="closeLoginModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded ml-4">Close</button>
-                <p class="mt-4 text-sm">Don't have an account? <button type="button" onclick="showRegisterModal()" class="text-blue-500">Register here</button></p>
-            </form>
-        </div>
-    </div>
-
-
-    <!-- Register Modal -->
-    <div id="register-modal" class="hidden fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex justify-center items-center">
-        <div class="bg-white p-8 rounded-lg shadow-md w-full mx-4 sm:w-1/2 md:w-1/3 lg:w-1/4">
-            <h2 class="text-2xl font-bold mb-4">Register</h2>
-            <form id="register-form" method="post">
-                <div class="mb-4">
-                    <label for="register-email" class="block text-sm font-semibold mb-1">Email</label>
-                    <input type="email" id="register-email" name="register-email" class="w-full border border-gray-300 rounded-md p-2" required>
-                </div>
-                <div class="mb-4">
-                    <label for="register-password" class="block text-sm font-semibold mb-1">Password</label>
-                    <input type="password" id="register-password" name="register-password" class="w-full border border-gray-300 rounded-md p-2" required>
-                </div>
-                <button type="submit" name="register" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Register</button>
-                <button type="button" onclick="closeRegisterModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded ml-4">Close</button>
-            </form>
-        </div>
-    </div>
-
 
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script>
@@ -382,39 +263,15 @@ if (isset($_POST['convert'])) {
         });
 
         function downloadText() {
-            const extractedText = document.getElementById('extracted-text').value;
-            const blob = new Blob([extractedText], {
-                type: 'text/plain'
-            });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'extracted_text.txt';
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-
-        function showLoginModal() {
-            const loginModal = document.getElementById('login-modal');
-            loginModal.classList.remove('hidden');
-        }
-
-        function closeLoginModal() {
-            const loginModal = document.getElementById('login-modal');
-            loginModal.classList.add('hidden');
-        }
-
-        function showRegisterModal() {
-            const loginModal = document.getElementById('login-modal');
-            const registerModal = document.getElementById('register-modal');
-            registerModal.classList.remove('hidden');
-            loginModal.classList.add('hidden');
-        }
-
-        function closeRegisterModal() {
-            const registerModal = document.getElementById('register-modal');
-            registerModal.classList.add('hidden');
-        }
+                const extractedText = document.getElementById('extracted-text').value;
+                const blob = new Blob([extractedText], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'extracted_text.txt';
+                a.click();
+                URL.revokeObjectURL(url);
+            }
     </script>
 </body>
 
